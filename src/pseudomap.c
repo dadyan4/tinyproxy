@@ -81,6 +81,7 @@ int pseudomap_remove(pseudomap *o, const char *key) {
 		e = sblist_get(o, i);
 		free(e->key);
 		free(e->value);
+		sblist_delete(o, i);
 		ret = 1;
 	}
 	return ret;
