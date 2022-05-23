@@ -28,6 +28,7 @@ pseudomap *pseudomap_create(void) {
 }
 
 void pseudomap_destroy(pseudomap *o) {
+	if(!o) return;
 	while(sblist_getsize(o)) {
 		/* retrieve latest element, and "shrink" list in place,
 		   so we don't have to constantly rearrange list items
