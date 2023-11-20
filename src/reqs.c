@@ -33,7 +33,7 @@
 #include "conns.h"
 #include "filter.h"
 #include "hsearch.h"
-#include "orderedmap.h"
+#include "pseudomap.h"
 #include "heap.h"
 #include "html-error.h"
 #include "log.h"
@@ -318,7 +318,7 @@ static int send_connect_method_response (struct conn_s *connptr)
  * build a new request line. Finally connect to the remote server.
  */
 static struct request_s *process_request (struct conn_s *connptr,
-                                          orderedmap hashofheaders)
+                                          pseudomap *hashofheaders)
 {
         char *url;
         struct request_s *request;
@@ -645,7 +645,7 @@ static int add_xtinyproxy_header (struct conn_s *connptr)
  * can be retrieved and manipulated later.
  */
 static int
-add_header_to_connection (orderedmap hashofheaders, char *header, size_t len)
+add_header_to_connection (pseudomap *hashofheaders, char *header, size_t len)
 {
         char *sep;
 
@@ -663,7 +663,7 @@ add_header_to_connection (orderedmap hashofheaders, char *header, size_t len)
         /* Calculate the new length of just the data */
         len -= sep - header - 1;
 
-        return orderedmap_append (hashofheaders, header, sep);
+        return pseudomap_append (hashofheaders, header, sep);
 }
 
 /*
@@ -676,7 +676,7 @@ add_header_to_connection (orderedmap hashofheaders, char *header, size_t len)
 /*
  * Read all the headers from the stream
  */
-static int get_all_headers (int fd, orderedmap hashofheaders)
+static int get_all_headers (int fd, pseudomap *hashofheaders)
 {
         char *line = NULL;
         char *header = NULL;
@@ -769,7 +769,7 @@ static int get_all_headers (int fd, orderedmap hashofheaders)
  * Extract the headers to remove.  These headers were listed in the Connection
  * and Proxy-Connection headers.
  */
-static int remove_connection_headers (orderedmap hashofheaders)
+static int remove_connection_headers (pseudomap *hashofheaders)
 {
         static const char *headers[] = {
                 "connection",
@@ -783,7 +783,7 @@ static int remove_connection_headers (orderedmap hashofheaders)
 
         for (i = 0; i != (sizeof (headers) / sizeof (char *)); ++i) {
                 /* Look for the connection header.  If it's not found, return. */
-                data = orderedmap_find(hashofheaders, headers[i]);
+                data = pseudomap_find(hashofheaders, headers[i]);
 
                 if (!data)
                         return 0;
@@ -804,7 +804,7 @@ static int remove_connection_headers (orderedmap hashofheaders)
                  */
                 ptr = data;
                 while (ptr < data + len) {
-                        orderedmap_remove (hashofheaders, ptr);
+                        pseudomap_remove (hashofheaders, ptr);
 
                         /* Advance ptr to the next token */
                         ptr += strlen (ptr) + 1;
@@ -813,7 +813,7 @@ static int remove_connection_headers (orderedmap hashofheaders)
                 }
 
                 /* Now remove the connection header it self. */
-                orderedmap_remove (hashofheaders, headers[i]);
+                pseudomap_remove (hashofheaders, headers[i]);
         }
 
         return 0;
@@ -823,12 +823,12 @@ static int remove_connection_headers (orderedmap hashofheaders)
  * If there is a Content-Length header, then return the value; otherwise, return
  * -1.
  */
-static long get_content_length (orderedmap hashofheaders)
+static long get_content_length (pseudomap *hashofheaders)
 {
         char *data;
         long content_length = -1;
 
-        data = orderedmap_find (hashofheaders, "content-length");
+        data = pseudomap_find (hashofheaders, "content-length");
 
         if (data)
                 content_length = atol (data);
@@ -836,10 +836,10 @@ static long get_content_length (orderedmap hashofheaders)
         return content_length;
 }
 
-static int is_chunked_transfer (orderedmap hashofheaders)
+static int is_chunked_transfer (pseudomap *hashofheaders)
 {
         char *data;
-        data = orderedmap_find (hashofheaders, "transfer-encoding");
+        data = pseudomap_find (hashofheaders, "transfer-encoding");
         return data ? !strcmp (data, "chunked") : 0;
 }
 
@@ -851,7 +851,7 @@ static int is_chunked_transfer (orderedmap hashofheaders)
  * purposes.
  */
 static int
-write_via_header (int fd, orderedmap hashofheaders,
+write_via_header (int fd, pseudomap *hashofheaders,
                   unsigned int major, unsigned int minor)
 {
         char hostname[512];
@@ -873,14 +873,14 @@ write_via_header (int fd, orderedmap hashofheaders,
          * See if there is a "Via" header.  If so, again we need to do a bit
          * of processing.
          */
-        data = orderedmap_find (hashofheaders, "via");
+        data = pseudomap_find (hashofheaders, "via");
         if (data) {
                 ret = write_message (fd,
                                      "Via: %s, %hu.%hu %s (%s/%s)\r\n",
                                      data, major, minor, hostname, PACKAGE,
                                      VERSION);
 
-                orderedmap_remove (hashofheaders, "via");
+                pseudomap_remove (hashofheaders, "via");
         } else {
                 ret = write_message (fd,
                                      "Via: %hu.%hu %s (%s/%s)\r\n",
@@ -892,18 +892,13 @@ done:
 }
 
 /*
- * Number of buckets to use internally in the hashmap.
- */
-#define HEADER_BUCKETS 32
-
-/*
  * Here we loop through all the headers the client is sending. If we
  * are running in anonymous mode, we will _only_ send the headers listed
  * (plus a few which are required for various methods).
  *	- rjkaes
  */
 static int
-process_client_headers (struct conn_s *connptr, orderedmap hashofheaders)
+process_client_headers (struct conn_s *connptr, pseudomap *hashofheaders)
 {
         static const char *skipheaders[] = {
                 "host",
@@ -951,7 +946,7 @@ process_client_headers (struct conn_s *connptr, orderedmap hashofheaders)
          * Delete the headers listed in the skipheaders list
          */
         for (i = 0; i != (sizeof (skipheaders) / sizeof (char *)); i++) {
-                orderedmap_remove (hashofheaders, skipheaders[i]);
+                pseudomap_remove (hashofheaders, skipheaders[i]);
         }
 
         /* Send, or add the Via header */
@@ -972,7 +967,7 @@ process_client_headers (struct conn_s *connptr, orderedmap hashofheaders)
          * Output all the remaining headers to the remote machine.
          */
         iter = 0;
-        while((iter = orderedmap_next(hashofheaders, iter, &data, &header))) {
+        while((iter = pseudomap_next(hashofheaders, iter, &data, &header))) {
                 if (!is_anonymous_enabled (config)
                     || anonymous_search (config, data) > 0) {
                         ret =
@@ -1027,7 +1022,7 @@ static int process_server_headers (struct conn_s *connptr)
 
         char *response_line;
 
-        orderedmap hashofheaders;
+        pseudomap *hashofheaders;
         size_t iter;
         char *data, *header;
         ssize_t len;
@@ -1057,7 +1052,7 @@ retry:
                 goto retry;
         }
 
-        hashofheaders = orderedmap_create (HEADER_BUCKETS);
+        hashofheaders = pseudomap_create ();
         if (!hashofheaders) {
                 safefree (response_line);
                 return -1;
@@ -1069,7 +1064,7 @@ retry:
         if (get_all_headers (connptr->server_fd, hashofheaders) < 0) {
                 log_message (LOG_WARNING,
                              "Could not retrieve all the headers from the remote server.");
-                orderedmap_destroy (hashofheaders);
+                pseudomap_destroy (hashofheaders);
                 safefree (response_line);
 
                 indicate_http_error (connptr, 503,
@@ -1088,7 +1083,7 @@ retry:
          * Instead we'll free all the memory and return.
          */
         if (connptr->protocol.major < 1) {
-                orderedmap_destroy (hashofheaders);
+                pseudomap_destroy (hashofheaders);
                 safefree (response_line);
                 return 0;
         }
@@ -1115,7 +1110,7 @@ retry:
          * Delete the headers listed in the skipheaders list
          */
         for (i = 0; i != (sizeof (skipheaders) / sizeof (char *)); i++) {
-                orderedmap_remove (hashofheaders, skipheaders[i]);
+                pseudomap_remove (hashofheaders, skipheaders[i]);
         }
 
         /* Send, or add the Via header */
@@ -1137,7 +1132,7 @@ retry:
 
         /* Rewrite the HTTP redirect if needed */
         if (config->reversebaseurl &&
-            (header = orderedmap_find (hashofheaders, "location"))) {
+            (header = pseudomap_find (hashofheaders, "location"))) {
 
                 /* Look for a matching entry in the reversepath list */
                 while (reverse) {
@@ -1162,7 +1157,7 @@ retry:
                                      "Rewriting HTTP redirect: %s -> %s%s%s",
                                      header, config->reversebaseurl,
                                      (reverse->path + 1), (header + len));
-                        orderedmap_remove (hashofheaders, "location");
+                        pseudomap_remove (hashofheaders, "location");
                 }
         }
 #endif
@@ -1171,14 +1166,14 @@ retry:
          * All right, output all the remaining headers to the client.
          */
         iter = 0;
-        while ((iter = orderedmap_next(hashofheaders, iter, &data, &header))) {
+        while ((iter = pseudomap_next(hashofheaders, iter, &data, &header))) {
 
                 ret = write_message (connptr->client_fd,
                                      "%s: %s\r\n", data, header);
                 if (ret < 0)
                         goto ERROR_EXIT;
         }
-        orderedmap_destroy (hashofheaders);
+        pseudomap_destroy (hashofheaders);
 
         /* Write the final blank line to signify the end of the headers */
         if (safe_write (connptr->client_fd, "\r\n", 2) < 0)
@@ -1187,7 +1182,7 @@ retry:
         return 0;
 
 ERROR_EXIT:
-        orderedmap_destroy (hashofheaders);
+        pseudomap_destroy (hashofheaders);
         return -1;
 }
 
@@ -1577,7 +1572,7 @@ void handle_connection (struct conn_s *connptr, union sockaddr_union* addr)
         int got_headers = 0, fd = connptr->client_fd;
         size_t i;
         struct request_s *request = NULL;
-        orderedmap hashofheaders = NULL;
+        pseudomap *hashofheaders = NULL;
 
         char sock_ipaddr[IP_LENGTH];
         char peer_ipaddr[IP_LENGTH];
@@ -1632,7 +1627,7 @@ void handle_connection (struct conn_s *connptr, union sockaddr_union* addr)
         /*
          * The "hashofheaders" store the client's headers.
          */
-        hashofheaders = orderedmap_create (HEADER_BUCKETS);
+        hashofheaders = pseudomap_create ();
         if (hashofheaders == NULL) {
                 update_stats (STAT_BADCONN);
                 indicate_http_error (connptr, 503, "Internal error",
@@ -1661,12 +1656,12 @@ void handle_connection (struct conn_s *connptr, union sockaddr_union* addr)
         if (config->basicauth_list != NULL) {
                 char *authstring;
                 int failure = 1, stathost_connect = 0;
-                authstring = orderedmap_find (hashofheaders, "proxy-authorization");
+                authstring = pseudomap_find (hashofheaders, "proxy-authorization");
 
                 if (!authstring && config->stathost) {
-                        authstring = orderedmap_find (hashofheaders, "host");
+                        authstring = pseudomap_find (hashofheaders, "host");
                         if (authstring && !strncmp(authstring, config->stathost, strlen(config->stathost))) {
-                                authstring = orderedmap_find (hashofheaders, "authorization");
+                                authstring = pseudomap_find (hashofheaders, "authorization");
                                 stathost_connect = 1;
                         } else authstring = 0;
                 }
@@ -1699,7 +1694,7 @@ e401:
                                              NULL);
                         HC_FAIL();
                 }
-                orderedmap_remove (hashofheaders, "proxy-authorization");
+                pseudomap_remove (hashofheaders, "proxy-authorization");
         }
 
         /*
@@ -1710,7 +1705,7 @@ e401:
         for (i = 0; i < sblist_getsize (config->add_headers); i++) {
                 http_header_t *header = sblist_get (config->add_headers, i);
 
-                orderedmap_append (hashofheaders, header->name, header->value);
+                pseudomap_append (hashofheaders, header->name, header->value);
         }
 
         request = process_request (connptr, hashofheaders);
@@ -1788,7 +1783,7 @@ e401:
 
 done:
         free_request_struct (request);
-        orderedmap_destroy (hashofheaders);
+        pseudomap_destroy (hashofheaders);
         conn_destroy_contents (connptr);
         return;
 #undef HC_FAIL
