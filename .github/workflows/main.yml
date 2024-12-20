@@ -47,9 +47,9 @@ jobs:
 
       - name: Build the Docker image
         run: |
-          docker build . \
+         docker build . \
             --file Dockerfile \
-            --tag ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.TAG }}
+            --tag ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo:${{ env.TAG }}
 
       - name: Docker Push
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.TAG }}
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo:${{ env.TAG }}
