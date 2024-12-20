@@ -1,36 +1,24 @@
-name: CI
+name: Build and Publish Docker Image to DockerHub
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    branches: ["main"]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v2
-    - run: ./autogen.sh
-    - run: ./configure
-    - run: make
-    - run: make test
-  test-macos:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - run: brew install automake
-    - run: ./autogen.sh
-    - run: ./configure
-    - run: make
-  valgrind-test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - run: sudo apt update
-    - run: sudo apt install --assume-yes valgrind
-    - run: ./autogen.sh
-    - run: ./configure --enable-debug --enable-transparent --enable-reverse
-    - run: make
-    - run: make test
-    - run: make valgrind-test
+      - uses: actions/checkout@v3
+
+      - name: DockerHub Login
+        uses: docker/login-action@v2.1.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build the Docker image
+        run: docker build . --file Dockerfile --tag ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo
+
+      - name: Docker Push
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo
