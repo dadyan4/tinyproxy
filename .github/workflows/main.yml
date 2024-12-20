@@ -1,3 +1,4 @@
+#ci
 name: Build and Publish Docker Image to DockerHub
 
 on:
