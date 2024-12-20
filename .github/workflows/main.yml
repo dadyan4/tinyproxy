@@ -1,4 +1,4 @@
-# ci project
+# ci project 1
 name: Build and Publish Docker Image to DockerHub
 
 on:
