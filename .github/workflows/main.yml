@@ -20,7 +20,7 @@ jobs:
       - name: Set Version, Build Number, and Repository Name
         id: set_version
         run: |
-          VERSION="prod_"
+          VERSION="prod_1.0"
           REPO_NAME="${{ github.repository }}" # Fetch the full repository name (owner/repo)
           REPO_NAME_ONLY=$(echo $REPO_NAME | cut -d '/' -f 2) # Extract just the repo name (after /)
           BUILD_NUMBER=${{ github.run_number }}
@@ -38,7 +38,7 @@ jobs:
           fi
           
           # Combine version and build number
-          TAG="$REPO_NAME_ONLY:$VERSION-build.$BUILD_NUMBER"
+          TAG="$REPO_NAME_ONLY_$VERSION_build.$BUILD_NUMBER"
 
           # Export variables
           echo "VERSION=$VERSION" >> $GITHUB_ENV
