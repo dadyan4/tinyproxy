@@ -38,7 +38,7 @@ jobs:
           fi
           
           # Combine version and build number
-          TAG="$REPO_NAME_ONLY_$VERSION_build.$BUILD_NUMBER"
+          TAG="$REPO_NAME_ONLY.$VERSION_build.$BUILD_NUMBER"
 
           # Export variables
           echo "VERSION=$VERSION" >> $GITHUB_ENV
