@@ -1,4 +1,3 @@
-#ci ok
 name: Build and Publish Docker Image to DockerHub
 
 on:
@@ -18,12 +17,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Set Version and Build Number
+      - name: Set Version, Build Number, and Repository Name
         id: set_version
         run: |
           VERSION="1.0.0"
           IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/karos-repo"
           BUILD_NUMBER=${{ github.run_number }}
+          REPO_NAME="${{ github.repository }}"
           
           # Check if the version already exists on Docker Hub
           if docker pull $IMAGE_NAME:$VERSION 2>/dev/null; then
@@ -37,8 +37,8 @@ jobs:
             VERSION="$MAJOR.$MINOR.$PATCH"
           fi
           
-          # Combine version with build number
-          TAG="$VERSION-build.$BUILD_NUMBER"
+          # Combine version, build number, and repository name
+          TAG="$REPO_NAME-$VERSION-build.$BUILD_NUMBER"
 
           # Export variables
           echo "VERSION=$VERSION" >> $GITHUB_ENV
