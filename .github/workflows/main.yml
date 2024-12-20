@@ -23,7 +23,7 @@ jobs:
           VERSION="1.0.0"
           IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/karos-repo"
           BUILD_NUMBER=${{ github.run_number }}
-          REPO_NAME="${{ github.repository }}"
+          REPO_NAME="${{ github.repository }}" # Fetch repository name
           
           # Check if the version already exists on Docker Hub
           if docker pull $IMAGE_NAME:$VERSION 2>/dev/null; then
