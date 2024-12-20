@@ -17,8 +17,21 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Build the Docker image
-        run: docker build . --file Dockerfile --tag ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo
+      - name: Set version variables
+        id: vars
+        run: |
+          echo "FULL_VERSION=1.0.0" >> $GITHUB_ENV
+          echo "MAJOR_VERSION=1" >> $GITHUB_ENV
 
-      - name: Docker Push
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo
+      - name: Build the Docker image
+        run: |
+          docker build . \
+            --file Dockerfile \
+            --tag ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo:${{ env.FULL_VERSION }} \
+            --tag ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo:${{ env.MAJOR_VERSION }}
+
+      - name: Docker Push (Full Version)
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo:${{ env.FULL_VERSION }}
+
+      - name: Docker Push (Major Version)
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/karos-repo:${{ env.MAJOR_VERSION }}
